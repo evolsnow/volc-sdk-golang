@@ -15,11 +15,18 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+	"golang.org/x/net/http/httpproxy"
 )
 
 const (
 	accessKey = "VOLC_ACCESSKEY"
 	secretKey = "VOLC_SECRETKEY"
+
+	// volc proxy
+	httpProxy     = "VOLC_HTTP_PROXY"
+	httpsProxy    = "VOLC_HTTPS_PROXY"
+	noProxy       = "VOLC_NO_PROXY"
+	requestMethod = "REQUEST_METHOD"
 
 	defaultScheme = "http"
 )
@@ -27,11 +34,19 @@ const (
 var _GlobalClient *http.Client
 
 func init() {
+	c := &httpproxy.Config{
+		HTTPProxy:  os.Getenv(httpProxy),
+		HTTPSProxy: os.Getenv(httpsProxy),
+		NoProxy:    os.Getenv(noProxy),
+		CGI:        os.Getenv(requestMethod) != "",
+	}
+	p := c.ProxyFunc()
 	_GlobalClient = &http.Client{
 		Transport: &http.Transport{
 			MaxIdleConns:        1000,
 			MaxIdleConnsPerHost: 100,
 			IdleConnTimeout:     10 * time.Second,
+			Proxy:               func(req *http.Request) (*url.URL, error) { return p(req.URL) },
 		},
 	}
 }
